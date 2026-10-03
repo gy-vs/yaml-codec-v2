@@ -92,7 +92,11 @@ describe('Scalar style dump:', function () {
     })
 
     it('accepts leading whitespace', function () {
-      assert.strictEqual(yaml.dump('   ' + content), '|2-\n   ' + indented + '\n')
+      // At the document root the indent indicator is resolved against a
+      // parent indent of -1, so the content is indented by state.indent - 1
+      // (one space) for the dump to load back to the original string.
+      assert.strictEqual(yaml.dump('   ' + content),
+        '|2-\n    a\n b \n\n  c\n   d\n')
     })
 
     it('falls back to quoting when required indent indicator is too large', function () {
@@ -242,6 +246,44 @@ describe('Scalar style dump:', function () {
       const content = [prefix, '    ' + line, '    ' + line].join('\n')
 
       assert.strictEqual(dump(content), '|-\n' + indent(content) + '\n')
+    })
+  })
+
+  describe('Block style round-trip', function () {
+    // Dump and check that dump-then-load preserves content (is the identity function).
+    function roundtrip (input, opts) {
+      const output = yaml.dump(input, opts)
+      assert.deepStrictEqual(yaml.load(output), input,
+        'Dump then load should preserve content: ' + JSON.stringify(output))
+      return output
+    }
+
+    it('preserves leading whitespace at the document root', function () {
+      assert.strictEqual(roundtrip(' x\n'), '|2\n  x\n')
+      roundtrip(' \n ')
+      roundtrip('  x\n  y\n  z\n')
+      roundtrip('\n x\n')
+      roundtrip('\n\n  x\n y')
+      roundtrip('   a\nb \n\n c\n  d')
+    })
+
+    it('preserves leading whitespace at the document root with custom indent', function () {
+      roundtrip(' x\n  y\n', { indent: 1 })
+      roundtrip(' x\n  y\n', { indent: 3 })
+      roundtrip(' x\n  y\n', { indent: 4 })
+      roundtrip(' x\n  y\n', { indent: 9 })
+    })
+
+    it('preserves leading whitespace in folded style at the document root', function () {
+      roundtrip(' word\n' + repeat('word ', 30) + '\nlast')
+    })
+
+    it('preserves leading whitespace inside block collections', function () {
+      roundtrip({ k: ' x\n' })
+      roundtrip([' x\n'])
+      roundtrip({ a: { b: ' x\n' } })
+      roundtrip([[' x\n']])
+      roundtrip({ k: [' \n ', { b: '  x\n  y\n' }] })
     })
   })
 })
