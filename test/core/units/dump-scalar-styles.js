@@ -92,7 +92,29 @@ describe('Scalar style dump:', function () {
     })
 
     it('accepts leading whitespace', function () {
-      assert.strictEqual(yaml.dump('   ' + content), '|2-\n   ' + indented + '\n')
+      assert.strictEqual(yaml.dump('   ' + content), '|3-\n   ' + indented + '\n')
+    })
+
+    it('round-trips leading whitespace at the document root', function () {
+      [' x\n',
+        ' \n ',
+        '   ' + content,
+        '  x\n  y\n',
+        '\n x\n',
+        ' x\n\n'
+      ].forEach(function (string) {
+        assert.strictEqual(yaml.load(yaml.dump(string)), string,
+          'Dump then load should preserve content')
+      })
+    })
+
+    it('round-trips leading whitespace nested in collections', function () {
+      const string = '   ' + content + '\n'
+
+      assert.deepStrictEqual(yaml.load(yaml.dump({ k: string })), { k: string })
+      assert.deepStrictEqual(yaml.load(yaml.dump([string])), [string])
+      assert.deepStrictEqual(yaml.load(yaml.dump({ a: [{ k: string }] })),
+        { a: [{ k: string }] })
     })
 
     it('falls back to quoting when required indent indicator is too large', function () {
